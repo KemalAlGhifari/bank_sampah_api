@@ -10,7 +10,7 @@ class Category extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'price_per_kg'];
+    protected $fillable = ['name', 'price_per_kg', 'unit'];
 
     public function depositItems()
     {

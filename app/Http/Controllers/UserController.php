@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -13,29 +14,39 @@ use Illuminate\Validation\Rule;
 class UserController extends Controller
 {
     // Menampilkan daftar semua pengguna
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::with('rt')
+        $pageSize = $request->query('page_size', $request->query('per_page', null));
+        $query = User::with('rt')
             ->withSum('deposits as total_setoran', 'total_amount')
-            ->withSum('deposits as total_deposit_kg', 'total_kg')
-            ->get()
-            ->map(function ($user) {
-                $user->rt_name = $user->rt->name ?? 'Unknown';
-                $user->rw_name = $user->rt->rw ?? 'Unknown';
+            ->withSum('deposits as total_deposit_kg', 'total_kg');
 
-                // Cast sums to floats/ints for JSON clarity
-                $user->total_setoran = (float) ($user->total_setoran ?? 0);
+        $transformUser = function ($user) {
+            $user->rt_name = $user->rt->name ?? 'Unknown';
+            $user->rw_name = $user->rt->rw ?? 'Unknown';
 
-                // Prefer computed sum of deposits for total kg, fallback to stored column
-                $user->total_kg = (float) ($user->total_deposit_kg ?? $user->total_kg ?? 0);
+            // Cast sums to floats/ints for JSON clarity
+            $user->total_setoran = (float) ($user->total_setoran ?? 0);
 
-                // remove intermediate field if present
-                if (isset($user->total_deposit_kg)) {
-                    unset($user->total_deposit_kg);
-                }
+            // Prefer computed sum of deposits for total kg, fallback to stored column
+            $user->total_kg = (float) ($user->total_deposit_kg ?? $user->total_kg ?? 0);
 
-                return $user;
-            });
+            // remove intermediate field if present
+            if (isset($user->total_deposit_kg)) {
+                unset($user->total_deposit_kg);
+            }
+
+            return $user;
+        };
+
+        if ($pageSize !== null) {
+            $pageSize = max(1, (int) $pageSize);
+            /** @var LengthAwarePaginator $users */
+            $users = $query->paginate($pageSize);
+            $users->through($transformUser);
+        } else {
+            $users = $query->get()->map($transformUser);
+        }
 
         return response()->json($users);
     }
@@ -55,11 +66,11 @@ class UserController extends Controller
     // Menampilkan daftar pengguna dengan role 'user' menggunakan pagination
     public function getUsers(Request $request)
     {
-        $perPage = $request->input('per_page', 100);
+        $pageSize = max(1, (int) $request->query('page_size', $request->query('per_page', 100)));
 
         $users = User::where('role', 'user')
             ->with('rt')
-            ->paginate($perPage);
+            ->paginate($pageSize);
 
         return response()->json($users);
     }

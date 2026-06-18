@@ -13,6 +13,60 @@ use Illuminate\Support\Facades\Validator;
 
 class WithdrawController extends Controller
 {
+    public function running(Request $request)
+    {
+        $pageSize = max(1, (int) $request->query('page_size', 10));
+
+        $withdraws = Withdraw::with('user')
+            ->where('user_id', $request->user()->id)
+            ->where('status', 'pending')
+            ->latest()
+            ->paginate($pageSize);
+
+        return response()->json([
+            'success' => true,
+            'data' => $withdraws,
+        ]);
+    }
+
+    public function cancel($id)
+    {
+        $withdraw = DB::transaction(function () use ($id) {
+            $withdraw = Withdraw::lockForUpdate()->find($id);
+
+            if (! $withdraw) {
+                abort(response()->json(['message' => 'Withdraw not found'], 404));
+            }
+
+            if ($withdraw->user_id !== request()->user()->id) {
+                abort(response()->json([
+                    'success' => false,
+                    'message' => 'Anda tidak memiliki akses untuk membatalkan withdraw ini',
+                ], 403));
+            }
+
+            if ($withdraw->status !== 'pending') {
+                abort(response()->json([
+                    'success' => false,
+                    'message' => 'Withdraw sudah diproses',
+                ], 400));
+            }
+
+            $user = User::lockForUpdate()->findOrFail($withdraw->user_id);
+            $user->increment('saldo', $withdraw->amount);
+
+            $withdraw->update(['status' => 'rejected']);
+
+            return $withdraw->refresh()->load('user');
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Withdraw canceled successfully',
+            'withdraw' => $withdraw,
+        ]);
+    }
+
     public function adminSummary(Request $request)
     {
         $pageSize = max(1, (int) $request->query('page_size', 10));

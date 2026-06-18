@@ -43,14 +43,28 @@ class DashboardController extends Controller
         $today = Carbon::today();
         $now = Carbon::now();
         $startDate = Carbon::today()->subDays(29);
+        $scheduleLimit = (int) $request->input('schedule_limit', 10);
+
+        if ($scheduleLimit < 1) {
+            $scheduleLimit = 1;
+        }
+
+        if ($scheduleLimit > 50) {
+            $scheduleLimit = 50;
+        }
 
         // Total kg user
         $totalKg = $user->total_kg;
 
-        // Next schedule
-        $nextSchedule = Schedule::where(function ($query) use ($user) {
+        // Upcoming schedules with priority: user -> rt -> all
+        $nextSchedules = Schedule::with(['user', 'rt'])
+            ->where(function ($query) use ($user) {
                 $query->where('user_id', $user->id)
-                    ->orWhereNull('user_id');
+                    ->orWhere(function ($q) use ($user) {
+                        $q->where('type', 'rt')
+                            ->where('rt_id', $user->rt_id);
+                    })
+                    ->orWhere('type', 'all');
             })
             ->where(function ($query) use ($today, $now) {
                 $query->whereDate('date', '>', $today)
@@ -61,7 +75,12 @@ class DashboardController extends Controller
             })
             ->orderBy('date')
             ->orderBy('time')
-            ->first();
+            ->orderByRaw(
+                "CASE WHEN user_id = ? THEN 1 WHEN type = 'rt' AND rt_id = ? THEN 2 WHEN type = 'all' THEN 3 ELSE 4 END",
+                [$user->id, $user->rt_id]
+            )
+            ->limit($scheduleLimit)
+            ->get();
 
         // Notifications
         $notifications = Notification::where('user_id', $user->id)
@@ -106,7 +125,7 @@ class DashboardController extends Controller
                     'saldo' => (float) $user->saldo,
                     'total_kg' => (float) $totalKg,
                 ],
-                'next_schedule' => $nextSchedule,
+                'next_schedules' => $nextSchedules,
                 'notifications' => $notifications,
                 'unread_notification_count' => $unreadNotificationCount,
                 'deposit_chart_30_days' => $depositChart,

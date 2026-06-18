@@ -15,8 +15,12 @@ class ScheduleSeeder extends Seeder
         Schedule::factory()
             ->count(30)
             ->state(function () use ($users) {
+                $user = $users->random();
+
                 return [
-                    'user_id' => $users->random()->id,
+                    'user_id' => $user->id,
+                    'rt_id' => $user->rt_id,
+                    'type' => 'user',
                 ];
             })
             ->create();

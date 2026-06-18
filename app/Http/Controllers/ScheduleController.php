@@ -19,23 +19,53 @@ class ScheduleController extends Controller
 
     public function index(Request $request)
     {
-        $schedules = Schedule::with('user')
+        $schedules = Schedule::with(['user', 'rt'])
             ->orderByDesc('date')
             ->orderByDesc('time')
             ->paginate($request->input('per_page', 10));
+
+        // Ensure user_name and rt_name present in paginated items
+        $collection = $schedules->getCollection()->transform(function ($item) {
+            $arr = $item->toArray();
+            $arr['user_name'] = $item->user ? $item->user->name : null;
+            $arr['rt_name'] = $item->rt ? $item->rt->name : null;
+            return $arr;
+        });
+
+        $schedules->setCollection($collection);
 
         return response()->json($schedules);
     }
 
     public function show($id)
     {
-        $schedule = Schedule::with('user')->find($id);
+        $schedule = Schedule::with(['user', 'rt'])->find($id);
 
         if (! $schedule) {
             return response()->json(['message' => 'Schedule not found'], 404);
         }
 
         return response()->json($schedule);
+    }
+
+    public function running(Request $request)
+    {
+        $schedules = Schedule::with(['user', 'rt'])
+            ->whereDate('date', '>=', now()->toDateString())
+            ->orderByDesc('date')
+            ->orderByDesc('time')
+            ->paginate($request->input('per_page', 10));
+
+        $collection = $schedules->getCollection()->transform(function ($item) {
+            $arr = $item->toArray();
+            $arr['user_name'] = $item->user ? $item->user->name : null;
+            $arr['rt_name'] = $item->rt ? $item->rt->name : null;
+            return $arr;
+        });
+
+        $schedules->setCollection($collection);
+
+        return response()->json($schedules);
     }
 
     public function store(Request $request)
@@ -76,6 +106,7 @@ class ScheduleController extends Controller
 
         // Create a single schedule record. For user-scoped schedule, set user_id.
         $scheduleData = [
+            'type' => $scope,
             'title' => $request->title,
             'date' => $request->date,
             'time' => $request->time,
@@ -85,8 +116,12 @@ class ScheduleController extends Controller
 
         if ($scope === 'user' && $targetUsers->first()) {
             $scheduleData['user_id'] = $targetUsers->first()->id;
+            $scheduleData['rt_id'] = $targetUsers->first()->rt_id;
+        } elseif ($scope === 'rt') {
+            $scheduleData['rt_id'] = $request->rt_id;
         } else {
             $scheduleData['user_id'] = null;
+            $scheduleData['rt_id'] = null;
         }
 
         $schedule = Schedule::create($scheduleData);
@@ -119,7 +154,7 @@ class ScheduleController extends Controller
 
         return response()->json([
             'message' => 'Schedule created successfully',
-            'schedule' => $schedule->load('user'),
+            'schedule' => $schedule->load(['user', 'rt']),
         ], 201);
     }
 
@@ -133,6 +168,8 @@ class ScheduleController extends Controller
 
         $validator = Validator::make($request->all(), [
             'user_id' => 'sometimes|exists:users,id',
+            'rt_id' => 'sometimes|exists:rts,id',
+            'type' => 'sometimes|in:user,rt,all',
             'title' => 'sometimes|string|max:255',
             'date' => 'sometimes|date',
             'time' => 'sometimes',
@@ -146,6 +183,8 @@ class ScheduleController extends Controller
 
         $schedule->update([
             'user_id' => $request->user_id ?? $schedule->user_id,
+            'rt_id' => $request->has('rt_id') ? $request->rt_id : $schedule->rt_id,
+            'type' => $request->type ?? $schedule->type,
             'title' => $request->title ?? $schedule->title,
             'date' => $request->date ?? $schedule->date,
             'time' => $request->time ?? $schedule->time,
@@ -172,13 +211,13 @@ class ScheduleController extends Controller
 
         return response()->json([
             'message' => 'Schedule updated successfully',
-            'schedule' => $schedule->load('user'),
+            'schedule' => $schedule->load(['user', 'rt']),
         ]);
     }
 
     public function destroy($id)
     {
-        $schedule = Schedule::with('user')->find($id);
+        $schedule = Schedule::with(['user', 'rt'])->find($id);
 
         if (! $schedule) {
             return response()->json(['message' => 'Schedule not found'], 404);

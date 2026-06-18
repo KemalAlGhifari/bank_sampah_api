@@ -13,6 +13,8 @@ class ScheduleFactory extends Factory
     {
         return [
             'user_id' => 1,
+            'rt_id' => 1,
+            'type' => fake()->randomElement(['user', 'rt', 'all']),
             'title' => fake()->randomElement([
                 'Penjemputan Sampah',
                 'Jadwal Setor',

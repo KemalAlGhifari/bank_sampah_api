@@ -36,6 +36,7 @@ class CategoryController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'price_per_kg' => 'required|numeric|min:0',
+            'unit' => 'required|string|max:50',
         ]);
 
         if ($validator->fails()) {
@@ -46,6 +47,7 @@ class CategoryController extends Controller
         $category = Category::create([
             'name' => $request->name,
             'price_per_kg' => $request->price_per_kg,
+            'unit' => $request->unit,
         ]);
 
         return response()->json(['message' => 'Category created successfully', 'data' => $category], 201);
@@ -58,6 +60,7 @@ class CategoryController extends Controller
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|string|max:255',
             'price_per_kg' => 'sometimes|numeric|min:0',
+            'unit' => 'sometimes|string|max:50',
         ]);
 
         if ($validator->fails()) {
@@ -74,6 +77,7 @@ class CategoryController extends Controller
         $category->update([
             'name' => $request->name ?? $category->name,
             'price_per_kg' => $request->price_per_kg ?? $category->price_per_kg,
+            'unit' => $request->unit ?? $category->unit,
         ]);
 
         return response()->json(['message' => 'Category updated successfully', 'category' => $category]);

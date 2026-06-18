@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepositController;
+use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\RtController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ScheduleController;
@@ -81,8 +82,10 @@ Route::middleware('auth:sanctum')->group(function() {
     Route::delete('deposits/{id}', [DepositController::class, 'destroy']);
 
     Route::get('withdraw', [WithdrawController::class, 'index']);
+    Route::get('withdraw/berjalan', [WithdrawController::class, 'running']);
     Route::get('withdraw/admin/summary', [WithdrawController::class, 'adminSummary']);
     Route::post('withdraw', [WithdrawController::class, 'store']);
+    Route::patch('withdraw/{id}/cancel', [WithdrawController::class, 'cancel']);
     Route::patch('withdraw/{id}/approve', [WithdrawController::class, 'approve']);
     Route::patch('withdraw/{id}/reject', [WithdrawController::class, 'reject']);
     Route::get('withdraw/{id}', [WithdrawController::class, 'show']);
@@ -103,10 +106,12 @@ Route::middleware('auth:sanctum')->group(function() {
 
     Route::get('dashboard/summary', [DashboardController::class, 'summary']);
     Route::get('dashboard/user-summary', [DashboardController::class, 'userSummary']);
+    Route::get('history', [HistoryController::class, 'index']);
     Route::get('report', [ReportController::class, 'index']);
     Route::get('report/user', [ReportController::class, 'userReport']);
 
     Route::get('schedules', [ScheduleController::class, 'index']);
+    Route::get('schedules/berjalan', [ScheduleController::class, 'running']);
     Route::get('schedules/{id}', [ScheduleController::class, 'show']);
     Route::post('schedules', [ScheduleController::class, 'store']);
     Route::put('schedules/{id}', [ScheduleController::class, 'update']);

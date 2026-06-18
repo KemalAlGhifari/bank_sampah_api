@@ -11,9 +11,24 @@ class CategoryFactory extends Factory
 
     public function definition(): array
     {
+        $categories = [
+            ['name' => 'Botol Plastik', 'price_per_kg' => 1500],
+            ['name' => 'Plastik Campur', 'price_per_kg' => 1200],
+            ['name' => 'Kardus', 'price_per_kg' => 800],
+            ['name' => 'Kertas HVS', 'price_per_kg' => 1000],
+            ['name' => 'Kaleng Aluminium', 'price_per_kg' => 3500],
+            ['name' => 'Kaleng Besi', 'price_per_kg' => 1800],
+            ['name' => 'Botol Kaca', 'price_per_kg' => 900],
+            ['name' => 'Minyak Jelantah', 'price_per_kg' => 2500],
+            ['name' => 'Pakaian Bekas', 'price_per_kg' => 700],
+            ['name' => 'Elektronik Kecil', 'price_per_kg' => 4000],
+        ];
+
+        $category = fake()->unique()->randomElement($categories);
+
         return [
-            'name' => ucfirst(fake()->unique()->words(2, true)),
-            'price_per_kg' => fake()->randomFloat(2, 500, 5000),
+            'name' => $category['name'],
+            'price_per_kg' => $category['price_per_kg'],
         ];
     }
 }
