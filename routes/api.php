@@ -36,6 +36,9 @@ Route::middleware('auth:sanctum')->group(function() {
 
     Route::get('/users/get-users', [UserController::class, 'getUsers']);
 
+    // Endpoint untuk mengambil data pengguna dari token (current user)
+    Route::get('me', [UserController::class, 'me']);
+
     // Endpoint untuk mendapatkan data pengguna berdasarkan ID
     Route::get('users/{id}', [UserController::class, 'show']);
 

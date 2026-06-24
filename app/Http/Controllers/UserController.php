@@ -16,10 +16,22 @@ class UserController extends Controller
     // Menampilkan daftar semua pengguna
     public function index(Request $request)
     {
-        $pageSize = $request->query('page_size', $request->query('per_page', null));
+        $pageSize = $request->query('page_size', null);
+        $page = max(1, (int) $request->query('page', 1));
+        $search = trim($request->query('search', ''));
+
         $query = User::with('rt')
             ->withSum('deposits as total_setoran', 'total_amount')
             ->withSum('deposits as total_deposit_kg', 'total_kg');
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('nik', 'like', "%{$search}%")
+                    ->orWhere('alamat', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
 
         $transformUser = function ($user) {
             $user->rt_name = $user->rt->name ?? 'Unknown';
@@ -42,7 +54,7 @@ class UserController extends Controller
         if ($pageSize !== null) {
             $pageSize = max(1, (int) $pageSize);
             /** @var LengthAwarePaginator $users */
-            $users = $query->paginate($pageSize);
+            $users = $query->paginate($pageSize, ['*'], 'page', $page);
             $users->through($transformUser);
         } else {
             $users = $query->get()->map($transformUser);
@@ -58,6 +70,35 @@ class UserController extends Controller
 
         if (! $user) {
             return response()->json(['message' => 'User not found1'], 404);
+        }
+
+        return response()->json($user);
+    }
+
+    // Mengambil data pengguna saat ini berdasarkan token
+    public function me(Request $request)
+    {
+        $authUser = $request->user();
+
+        if (! $authUser) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+
+        $user = User::with('rt')
+            ->withSum('deposits as total_setoran', 'total_amount')
+            ->withSum('deposits as total_deposit_kg', 'total_kg')
+            ->find($authUser->id);
+
+        if (! $user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        $user->rt_name = $user->rt->name ?? 'Unknown';
+        $user->rw_name = $user->rt->rw ?? 'Unknown';
+        $user->total_setoran = (float) ($user->total_setoran ?? 0);
+        $user->total_kg = (float) ($user->total_deposit_kg ?? $user->total_kg ?? 0);
+        if (isset($user->total_deposit_kg)) {
+            unset($user->total_deposit_kg);
         }
 
         return response()->json($user);
