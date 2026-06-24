@@ -38,7 +38,7 @@ class WithdrawController extends Controller
                 abort(response()->json(['message' => 'Withdraw not found'], 404));
             }
 
-            if ($withdraw->user_id !== request()->user()->id) {
+            if ($withdraw->user_id != request()->user()->id) {
                 abort(response()->json([
                     'success' => false,
                     'message' => 'Anda tidak memiliki akses untuk membatalkan withdraw ini',
